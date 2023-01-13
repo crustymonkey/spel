@@ -17378,7 +17378,7 @@ iconography
 ictus
 icy
 id
-I'd
+i'd
 idea
 ideal
 idealism
@@ -17455,7 +17455,7 @@ ileum
 ilium
 ilk
 ill
-I'll
+i'll
 ill-advised
 ill-advisedly
 ill-bred
@@ -17518,7 +17518,7 @@ illustrator
 illustrious
 illustriously
 illustriousness
-I'm
+i'm
 image
 imagery
 imaginable
@@ -19308,7 +19308,7 @@ its
 itself
 itsy-bitsy
 itty-bitty
-I've
+i've
 ivied
 ivories
 ivory
