@@ -4,12 +4,14 @@ extern crate chrono;
 use anyhow::Result;
 use clap::Parser;
 use difflib::sequencematcher::SequenceMatcher;
+#[allow(deprecated)]
 use std::{
     include_bytes,
+    env::home_dir,
     collections::HashSet,
     io::{prelude::*, BufRead, BufReader, Lines},
-    path::Path,
-    fs::{File, read},
+    path::{Path, PathBuf},
+    fs::File,
 };
 
 #[derive(Parser, Debug)]
@@ -27,6 +29,13 @@ struct Args {
     /// Search all files recursively
     #[arg(short, long, default_value_t=false)]
     recursive: bool,
+    /// A comma-separated list of words to ignore. Only relevant with --file
+    #[arg(short, long)]
+    ignore: Option<String>,
+    /// Ignore list file, this will be added to anything specified with
+    /// the --ignore option.  The file should be 1 item (word) per line
+    #[arg(short='I', long, default_value="~/.spel_ignore")]
+    ignore_file: PathBuf,
     /// When incorrect in a single word check, show the top N possible
     /// correct spellings
     #[arg(short, long, default_value="5")]
@@ -129,28 +138,46 @@ fn to_hashset(word_list: Vec<String>) -> HashSet<String> {
     return ret;
 }
 
-fn read_lines(filename: &str) -> Result<Lines<BufReader<File>>> {
-    let file = File::open(&Path::new(filename))?;
+fn read_lines(filename: &PathBuf) -> Result<Lines<BufReader<File>>> {
+    let file = File::open(&filename)?;
 
     return Ok(BufReader::new(file).lines());
+}
+
+/// Check that the token actually looks like a word, return true if it looks
+/// at least somewhat legit
+fn check_token(token: &str) -> bool {
+    if token.len() == 0 {
+        return false;
+    }
+
+    let mut ok = false;
+    for c in token.chars() {
+        if c.is_ascii_alphanumeric() {
+            ok = true;
+            break;
+        }
+    }
+
+    return ok;
 }
 
 /// go through the line and return the words, removing any special chars
 fn tokenize(line: &str) -> Vec<String> {
     let mut ret = vec![];
     let mut tmp = String::new();
-    for char in line.chars() {
-        if char.is_ascii_alphabetic() || char == '-' || char == '\'' {
+    for c in line.chars() {
+        if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
             // Alphabetic chars, dashes and apostrophes are ok
-            if char == '-' || char == '\'' {
-                tmp.push(char);
+            if c == '-' || c == '\'' {
+                tmp.push(c);
             } else {
-                tmp.push(char.to_ascii_lowercase());
+                tmp.push(c.to_ascii_lowercase());
             }
         } else {
             // If we get here, we've found a word boundary of some sort,
             // append a copy of the word to our return set
-            if tmp.len() > 0 && tmp != "-" && tmp != "'" {
+            if check_token(&tmp){
                 ret.push(tmp.clone());
             }
 
@@ -171,13 +198,14 @@ fn check_file(
     fname: &str,
     reader: Lines<BufReader<File>>,
     words: &HashSet<String>,
+    ign_list: &HashSet<String>,
 ) {
     let mut lcount: u64 = 1;
     for line in reader {
         if let Ok(l) = line {
             let tokens = tokenize(&l);
             for word in &tokens {
-                if !words.contains(word) {
+                if !words.contains(word) && !ign_list.contains(word) {
                     println!("{}:{} \"{}\"", fname, lcount, word);
                 }
             }
@@ -187,18 +215,109 @@ fn check_file(
     }
 }
 
-fn check_files(files: Vec<String>, words: HashSet<String>) {
+fn check_files(
+    files: Vec<String>,
+    words: HashSet<String>,
+    ign_list: HashSet<String>,
+) {
+    // TODO: implement recursive checks
     for fname in &files {
-        let reader = match read_lines(fname) {
+        let reader = match read_lines(&PathBuf::from(fname)) {
             Err(e) => {
-                warn!("Failed to open \"{}\" for reading, skipping", fname);
+                warn!(
+                    "Failed to open \"{}\" for reading, skipping: {}",
+                    fname,
+                    e
+                );
                 continue;
             },
             Ok(reader) => reader,
         };
 
-        check_file(fname, reader, &words);
+        check_file(fname, reader, &words, &ign_list);
     }
+}
+
+#[allow(deprecated)]
+fn parse_path(fpath: &PathBuf) -> PathBuf {
+    if !fpath.starts_with("~") {
+        // If it doesn't start with a ~, we just return it
+        return fpath.to_owned();
+    }
+
+    let mut ret = PathBuf::new();
+
+    // Turn it into a str with the ~ stripped
+    let mut path_str = fpath.to_str().unwrap().strip_prefix("~").unwrap();
+    if path_str.starts_with("/") {
+        path_str = path_str.strip_prefix("/").unwrap();
+    }
+
+    ret.push(home_dir().unwrap());
+    ret.push(path_str);
+
+    return ret;
+}
+
+fn get_ignore_file_contents(fpath: &PathBuf) -> Vec<String> {
+    let mut ret: Vec<String> = vec![];
+
+    let real_path = parse_path(fpath);
+
+    if !real_path.exists() {
+        // No file, empty vec
+        debug!("Ignore file, {}, does not exist", fpath.to_string_lossy());
+        return ret;
+    }
+
+    let reader = match read_lines(&real_path) {
+        Err(e) => {
+            warn!(
+                "Failed to open \"{}\" for reading ignore content: {}",
+                fpath.to_string_lossy(),
+                e,
+            );
+            return ret;
+        },
+        Ok(r) => r,
+    };
+
+    for line in reader {
+        if let Ok(l) = line {
+            let word = l.trim();
+            if word.len() > 0 {
+                debug!("Adding '{}' from ignore file", word);
+                ret.push(word.to_string());
+            }
+        }
+    }
+
+    return ret;
+}
+
+/// Return a list of the ignored words specified on eithe the command-line
+/// or via an ignore file
+fn get_ignore_list(to_ign: &Option<String>, ign_file: &PathBuf) -> Vec<String> {
+    let mut ret = get_ignore_file_contents(ign_file);
+    if to_ign.is_none() {
+        // If we don't actually have an ignore list, return an empty vec
+        return ret;
+    }
+
+    let ign = to_ign.as_ref().unwrap();
+
+    let tmp: Vec<String> = ign.split(',').map(
+        |w| w.trim().to_string()
+    ).collect();
+
+    // Filter empty values
+    for item in tmp {
+        if item.len() > 0 {
+            ret.push(item);
+        }
+    }
+
+    return ret;
 }
 
 fn main() {
@@ -210,12 +329,17 @@ fn main() {
     if args.file {
         // Convert the word list to hashset for fast lookups
         let wset = to_hashset(words);
-        check_files(args.word, wset);
+        let ign_list = to_hashset(
+            get_ignore_list(&args.ignore, &args.ignore_file)
+        );
+        check_files(args.word, wset, ign_list);
     } else {
         let matches = find_word(&args.word[0], &words);
+
         for i in 0..args.top {
             let (ratio, word) = matches[i];
             println!("{}", word);
+
             if ratio == 1.0 {
                 debug!("Found an exact match for our check");
                 // If we have an exact match, just break out
@@ -228,7 +352,7 @@ fn main() {
 #[test]
 fn test_readlines() {
     let fname = "english.txt";  // This should always be here
-    let reader = match read_lines(fname) {
+    let reader = match read_lines(&PathBuf::from(fname)) {
         Err(e) => panic!("Error opening {}: {}", fname, e),
         Ok(reader) => reader,
     };
@@ -236,7 +360,7 @@ fn test_readlines() {
     let mut lcount: u64 = 1;
     for line in reader {
         if let Err(e) = line {
-            panic!("Error reading line {}", lcount);
+            panic!("Error reading line {}: {}", lcount, e);
         }
 
         lcount += 1;
@@ -245,7 +369,7 @@ fn test_readlines() {
     println!("Read {} lines", lcount);
 
     // Test for error on non-existant file
-    let fail = read_lines("non-existant file");
+    let fail = read_lines(&PathBuf::from("non-existant file"));
     assert!(fail.is_err());
 }
 
@@ -266,4 +390,38 @@ fn test_tokenize() {
     let test3 = "A Bad Deal";
     let res = tokenize(test3);
     assert_eq!(res, vec!["a", "bad", "deal"]);
+}
+
+#[test]
+fn test_get_ignore_list() {
+    let s = Some("a,b,c".to_string());
+
+    assert_eq!(
+        get_ignore_list(&s, &PathBuf::from("")),
+        vec!["a".to_string(), "b".to_string(), "c".to_string()],
+    );
+
+    let s2 = Some("a , b  , c,".to_string());
+    assert_eq!(
+        get_ignore_list(&s2, &PathBuf::from("")),
+        vec!["a".to_string(), "b".to_string(), "c".to_string()],
+    );
+
+    let s3 = Some("  , ".to_string());
+    assert!(get_ignore_list(&s3, &PathBuf::from("")).len() == 0);
+
+    let s4 = None;
+    assert!(get_ignore_list(&s4, &PathBuf::from("")).len() == 0);
+}
+
+#[test]
+fn test_parse_path() {
+    let p = PathBuf::from("~/some/file.txt");
+    assert_eq!(parse_path(&p), PathBuf::from("/home/jay/some/file.txt"));
+
+    let p = PathBuf::from("some/file.txt");
+    assert_eq!(parse_path(&p), p);
+
+    let p = PathBuf::from("/home/jay/some/file.txt");
+    assert_eq!(parse_path(&p), p);
 }
