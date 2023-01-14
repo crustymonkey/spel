@@ -4,10 +4,9 @@ extern crate chrono;
 use anyhow::Result;
 use clap::Parser;
 use difflib::sequencematcher::SequenceMatcher;
-#[allow(deprecated)]
 use std::{
     include_bytes,
-    env::home_dir,
+    env,
     collections::HashSet,
     io::{BufRead, BufReader, Lines},
     path::PathBuf,
@@ -251,7 +250,6 @@ fn check_files(
 
 /// This will basically just handle a ~/, which is silly that I have to
 /// do this, but whatever
-#[allow(deprecated)]
 fn parse_path(fpath: &PathBuf) -> PathBuf {
     if !fpath.starts_with("~") {
         // If it doesn't start with a ~, we just return it
@@ -266,7 +264,7 @@ fn parse_path(fpath: &PathBuf) -> PathBuf {
         path_str = path_str.strip_prefix("/").unwrap();
     }
 
-    ret.push(home_dir().unwrap());
+    ret.push(env::var("HOME").unwrap());
     ret.push(path_str);
 
     return ret;
