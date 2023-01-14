@@ -249,6 +249,8 @@ fn check_files(
     }
 }
 
+/// This will basically just handle a ~/, which is silly that I have to
+/// do this, but whatever
 #[allow(deprecated)]
 fn parse_path(fpath: &PathBuf) -> PathBuf {
     if !fpath.starts_with("~") {
@@ -331,6 +333,32 @@ fn get_ignore_list(to_ign: &Option<String>, ign_file: &PathBuf) -> Vec<String> {
     return ret;
 }
 
+/// This will spell check words supplied on the command-line
+fn spell_check_words(args: &Args, words: Vec<String>) {
+    for (i, word) in args.word.iter().enumerate() {
+        let matches = find_word(word, &words);
+
+        for j in 0..args.top {
+            let (ratio, word) = matches[j];
+            if args.debug {
+                println!("{}: {}", word, ratio);
+            } else {
+                println!("{}", word);
+            }
+
+            if ratio == 1.0 {
+                debug!("Found an exact match for our check");
+                // If we have an exact match, just break out
+                break;
+            }
+        }
+
+        if i != args.word.len() - 1 {
+            println!("\n-----\n");
+        }
+    }
+}
+
 fn main() {
     let args = get_args();
     setup_logging(&args);
@@ -353,28 +381,7 @@ fn main() {
 
         check_files(&files, &wset, &ign_list);
     } else {
-        for (i, word) in args.word.iter().enumerate() {
-            let matches = find_word(word, &words);
-
-            for j in 0..args.top {
-                let (ratio, word) = matches[j];
-                if args.debug {
-                    println!("{}: {}", word, ratio);
-                } else {
-                    println!("{}", word);
-                }
-
-                if ratio == 1.0 {
-                    debug!("Found an exact match for our check");
-                    // If we have an exact match, just break out
-                    break;
-                }
-            }
-
-            if i != args.word.len() - 1 {
-                println!("\n-----\n");
-            }
-        }
+        spell_check_words(&args, words);
     }   
 }
 
