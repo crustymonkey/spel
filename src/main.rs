@@ -150,7 +150,7 @@ fn check_token(token: &str) -> bool {
 
     let mut ok = false;
     for c in token.chars() {
-        if c.is_ascii_alphanumeric() {
+        if c.is_ascii_alphabetic() {
             ok = true;
             break;
         }
@@ -164,7 +164,7 @@ fn tokenize(line: &str) -> Vec<String> {
     let mut ret = vec![];
     let mut tmp = String::new();
     for c in line.chars() {
-        if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
+        if c.is_ascii_alphanumeric() || c == '-' || c == '\'' {
             // Alphabetic chars, dashes and apostrophes are ok
             if c == '-' || c == '\'' {
                 tmp.push(c);
@@ -175,6 +175,10 @@ fn tokenize(line: &str) -> Vec<String> {
             // If we get here, we've found a word boundary of some sort,
             // append a copy of the word to our return set
             if check_token(&tmp){
+                if tmp.ends_with("'s") {
+                    // Strip off apostrophe s and eval the regular word
+                    tmp = tmp.strip_suffix("'s").unwrap().to_string();
+                }
                 ret.push(tmp.clone());
             }
 
@@ -384,7 +388,7 @@ fn test_tokenize() {
     // Test special chars
     let test2 = "a hyphen-ated word that's life::monkey";
     let res = tokenize(test2);
-    assert_eq!(res, vec!["a", "hyphen-ated", "word", "that's", "life", "monkey"]);
+    assert_eq!(res, vec!["a", "hyphen-ated", "word", "that", "life", "monkey"]);
 
     // Test casing
     let test3 = "A Bad Deal";
