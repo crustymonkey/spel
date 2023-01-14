@@ -159,6 +159,21 @@ fn check_token(token: &str) -> bool {
     return ok;
 }
 
+fn strip_apost(word: &str) -> String {
+    let mut ret = word.to_string();
+    if ret.ends_with("'s") {
+        // Strip off apostrophe s and eval the regular ret
+        ret = ret.strip_suffix("'s").unwrap().to_string();
+    }
+
+    if ret.ends_with("'") {
+        // Strip trailing apostrophes
+        ret = ret.strip_suffix("'").unwrap().to_string();
+    }
+
+    return ret;
+}
+
 /// go through the line and return the words, removing any special chars
 fn tokenize(line: &str) -> Vec<String> {
     let mut ret = vec![];
@@ -175,25 +190,15 @@ fn tokenize(line: &str) -> Vec<String> {
             // If we get here, we've found a word boundary of some sort,
             // append a copy of the word to our return set
             if check_token(&tmp){
-                if tmp.ends_with("'s") {
-                    // Strip off apostrophe s and eval the regular word
-                    tmp = tmp.strip_suffix("'s").unwrap().to_string();
-                }
-
-                if tmp.ends_with("'") {
-                    // Strip trailing apostrophes
-                    tmp = tmp.strip_suffix("'").unwrap().to_string();
-                }
-
-                ret.push(tmp.clone());
+                ret.push(strip_apost(&tmp));
             }
 
             tmp = String::new();
         }
     }
 
-    if check_token(tmp) {
-        ret.push(tmp);
+    if check_token(&tmp) {
+        ret.push(strip_apost(&tmp));
     }
 
     return ret;
