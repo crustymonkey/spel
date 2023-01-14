@@ -9,8 +9,8 @@ use std::{
     include_bytes,
     env::home_dir,
     collections::HashSet,
-    io::{prelude::*, BufRead, BufReader, Lines},
-    path::{Path, PathBuf},
+    io::{BufRead, BufReader, Lines},
+    path::PathBuf,
     fs::File,
 };
 
@@ -26,9 +26,6 @@ struct Args {
     /// The argument(s) here are file(s) instead of a word
     #[arg(short, long, default_value_t=false)]
     file: bool,
-    /// Search all files recursively
-    #[arg(short, long, default_value_t=false)]
-    recursive: bool,
     /// A comma-separated list of words to ignore. Only relevant with --file
     #[arg(short, long)]
     ignore: Option<String>,
@@ -195,7 +192,7 @@ fn tokenize(line: &str) -> Vec<String> {
 /// Read the file by lines, and output the filename:line number for each
 /// misspelled word
 fn check_file(
-    fname: &str,
+    fname: &PathBuf,
     reader: Lines<BufReader<File>>,
     words: &HashSet<String>,
     ign_list: &HashSet<String>,
@@ -206,7 +203,7 @@ fn check_file(
             let tokens = tokenize(&l);
             for word in &tokens {
                 if !words.contains(word) && !ign_list.contains(word) {
-                    println!("{}:{} \"{}\"", fname, lcount, word);
+                    println!("{}:{} \"{}\"", fname.display(), lcount, word);
                 }
             }
         }
@@ -216,17 +213,16 @@ fn check_file(
 }
 
 fn check_files(
-    files: Vec<String>,
-    words: HashSet<String>,
-    ign_list: HashSet<String>,
+    files: &Vec<PathBuf>,
+    words: &HashSet<String>,
+    ign_list: &HashSet<String>,
 ) {
-    // TODO: implement recursive checks
-    for fname in &files {
-        let reader = match read_lines(&PathBuf::from(fname)) {
+    for fpath in files {
+        let reader = match read_lines(&fpath) {
             Err(e) => {
                 warn!(
                     "Failed to open \"{}\" for reading, skipping: {}",
-                    fname,
+                    fpath.display(),
                     e
                 );
                 continue;
@@ -234,7 +230,7 @@ fn check_files(
             Ok(reader) => reader,
         };
 
-        check_file(fname, reader, &words, &ign_list);
+        check_file(fpath, reader, words, ign_list);
     }
 }
 
@@ -332,7 +328,11 @@ fn main() {
         let ign_list = to_hashset(
             get_ignore_list(&args.ignore, &args.ignore_file)
         );
-        check_files(args.word, wset, ign_list);
+        let files: Vec<PathBuf> = args.word.iter().map(
+            |f| PathBuf::from(f)
+        ).collect();
+
+        check_files(&files, &wset, &ign_list);
     } else {
         let matches = find_word(&args.word[0], &words);
 
