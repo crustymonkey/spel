@@ -179,6 +179,12 @@ fn tokenize(line: &str) -> Vec<String> {
                     // Strip off apostrophe s and eval the regular word
                     tmp = tmp.strip_suffix("'s").unwrap().to_string();
                 }
+
+                if tmp.ends_with("'") {
+                    // Strip trailing apostrophes
+                    tmp = tmp.strip_suffix("'").unwrap().to_string();
+                }
+
                 ret.push(tmp.clone());
             }
 
@@ -186,7 +192,7 @@ fn tokenize(line: &str) -> Vec<String> {
         }
     }
 
-    if tmp.len() > 0 {
+    if check_token(tmp) {
         ret.push(tmp);
     }
 
@@ -428,4 +434,11 @@ fn test_parse_path() {
 
     let p = PathBuf::from("/home/jay/some/file.txt");
     assert_eq!(parse_path(&p), p);
+}
+
+#[test]
+fn test_check_token() {
+    assert!(check_token("abc"));
+    assert!(!check_token("--"));
+    assert!(!check_token("1"));
 }
