@@ -337,6 +337,10 @@ fn main() {
     let fbytes = include_bytes!("../english.txt");
     let words = get_words(fbytes);
 
+    if args.word.len() == 0 {
+        return;
+    }
+
     if args.file {
         // Convert the word list to hashset for fast lookups
         let wset = to_hashset(words);
@@ -349,16 +353,26 @@ fn main() {
 
         check_files(&files, &wset, &ign_list);
     } else {
-        let matches = find_word(&args.word[0], &words);
+        for (i, word) in args.word.iter().enumerate() {
+            let matches = find_word(word, &words);
 
-        for i in 0..args.top {
-            let (ratio, word) = matches[i];
-            println!("{}", word);
+            for j in 0..args.top {
+                let (ratio, word) = matches[j];
+                if args.debug {
+                    println!("{}: {}", word, ratio);
+                } else {
+                    println!("{}", word);
+                }
 
-            if ratio == 1.0 {
-                debug!("Found an exact match for our check");
-                // If we have an exact match, just break out
-                break;
+                if ratio == 1.0 {
+                    debug!("Found an exact match for our check");
+                    // If we have an exact match, just break out
+                    break;
+                }
+            }
+
+            if i != args.word.len() - 1 {
+                println!("\n-----\n");
             }
         }
     }   
