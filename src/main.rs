@@ -456,9 +456,10 @@ fn test_parse_path() {
     let p = PathBuf::from("some/file.txt");
     assert_eq!(parse_path(&p), p);
 
-    env::set_var("HOME", "/home/jay");
-    let p = PathBuf::from("/home/jay/some/file.txt");
-    assert_eq!(parse_path(&p), p);
+    if let Ok(home_dir) = env::var("HOME") {
+        let p = PathBuf::from(&format!("{}/some/file.txt", home_dir));
+        assert_eq!(parse_path(&p), p);
+    }
 }
 
 #[test]
