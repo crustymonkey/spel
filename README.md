@@ -12,3 +12,5 @@ This is a pretty simple spelling checker.  It works in one of two ways.
       a comma-separated list of items using the `--ignore` flag.
     * You can also create an `--ignore-file` (default is `~/.spel_ignore`)
       with 1 word per line as a more permanent list of things to ignore.
+      Functionally, this is pretty much the same as adding a custom word
+      list.
