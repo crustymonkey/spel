@@ -261,10 +261,17 @@ pub fn spell_check_words(
     top: usize,
     debug: bool,
 ) {
+    let mut topn = top;
+    if words.len() < top {
+        // Handle the custom word list case where
+        topn = words.len();
+    }
+    debug!("topn: {}", topn);
+
     for (i, word) in word_list.iter().enumerate() {
         let matches = find_word(word, &words);
 
-        for j in 0..top {
+        for j in 0..topn {
             let (ratio, word) = matches[j];
             if debug {
                 println!("{}: {}", word, ratio);
@@ -387,6 +394,9 @@ fn test_check_token() {
 fn test_get_words() {
     let bytes = b"this\nis\na\nword\n";
     assert_eq!(get_words(bytes), vec!["this", "is", "a", "word"]);
+
+    let bytes = b"a\ndifferent\ntest";
+    assert_eq!(get_words(bytes), vec!["a", "different", "test"]);
 }
 
 #[test]
