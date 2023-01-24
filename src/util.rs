@@ -4,9 +4,10 @@ use difflib::sequencematcher::SequenceMatcher;
 use std::{
     env,
     collections::HashSet,
-    io::{BufRead, BufReader, Lines},
+    io::{BufRead, BufReader, Lines, Read},
     path::PathBuf,
-    fs::File, vec,
+    fs::{File},
+    vec,
 };
 
 /// This processes the dictionary file stored as bytes in the binary itself
@@ -284,6 +285,15 @@ pub fn spell_check_words(
     }
 }
 
+pub fn read_bytes(path: &PathBuf) -> Result<Vec<u8>> {
+    let real_path = parse_path(path);
+    let mut f = File::open(real_path)?;
+    let mut ret = vec![];
+    f.read_to_end(&mut ret)?;
+
+    return Ok(ret);
+}
+
 #[test]
 fn test_readlines() {
     let fname = "english.txt";  // This should always be here
@@ -400,4 +410,31 @@ fn test_strip_apost() {
     assert_eq!(strip_apost("jay's"), "jay");
     assert_eq!(strip_apost("players'"), "players");
     assert_eq!(strip_apost("ja'y"), "ja'y");
+}
+
+#[test]
+fn test_read_bytes() {
+    use std::{
+        fs::{OpenOptions, remove_file},
+        io::Write,
+    };
+
+    let fname = PathBuf::from("/tmp/byte_test");
+    let bytes = b"This\nis\na\ntest";
+
+    {
+        let mut f = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&fname).unwrap();
+        
+        f.write_all(bytes).unwrap();
+    }
+    
+    let res = read_bytes(&fname).unwrap();
+    assert_eq!(res.as_slice(), bytes);
+
+    if fname.is_file() {
+        remove_file(&fname).unwrap();
+    }
 }

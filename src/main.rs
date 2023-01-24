@@ -33,6 +33,10 @@ struct Args {
     /// correct spellings
     #[arg(short, long, default_value="5")]
     top: usize,
+    /// Use an alternate dictionary file.  This should be 1 word per line and
+    /// in a utf-8 character set.
+    #[arg(short, long)]
+    dict: Option<PathBuf>,
     /// Turn on debug output
     #[arg(short='D', long)]
     debug: bool,
@@ -90,7 +94,21 @@ fn main() {
     let args = get_args();
     setup_logging(&args);
     let fbytes = include_bytes!("../english.txt");
-    let words = get_words(fbytes);
+    let mut alt_fbytes = vec![];
+    if let Some(path) = args.dict {
+        // Use an alternate dict file
+        alt_fbytes = read_bytes(&path)
+            .expect("Error reading specified dict file");
+    }
+
+    // The compiler is flagging this as unused for some reason...
+    #[allow(unused_assignments)]
+    let mut words = vec![];
+    if alt_fbytes.len() > 0 {
+        words = get_words(alt_fbytes.as_slice());
+    } else {
+        words = get_words(fbytes);
+    }
 
     if args.word.len() == 0 {
         return;
