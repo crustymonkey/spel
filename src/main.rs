@@ -101,9 +101,7 @@ fn main() {
             .expect("Error reading specified dict file");
     }
 
-    // The compiler is flagging this as unused for some reason...
-    #[allow(unused_assignments)]
-    let mut words = vec![];
+    let words;
     if alt_fbytes.len() > 0 {
         words = get_words(alt_fbytes.as_slice());
     } else {
