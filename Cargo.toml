@@ -1,6 +1,7 @@
 [package]
 name = "spel"
 version = "0.2.6"
+description = """This is a very simple command-line spelling checker"""
 edition = "2021"
 repository = "https://github.com/crustymonkey/spel"
 license = "GPL-2.0-or-later"
