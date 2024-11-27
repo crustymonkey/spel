@@ -1,7 +1,11 @@
 [package]
 name = "spel"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2021"
+repository = "https://github.com/crustymonkey/spel"
+license = "GPL-2.0-or-later"
+homepage = "https://github.com/crustymonkey/spel"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
