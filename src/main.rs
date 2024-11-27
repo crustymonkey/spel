@@ -1,44 +1,42 @@
 extern crate chrono;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 use clap::Parser;
-use std::{
-    include_bytes,
-    path::PathBuf,
-};
+use std::{include_bytes, path::PathBuf};
 
 mod util;
 use crate::util::*;
 
 #[derive(Parser, Debug)]
 #[command(
-    author="Jay Deiman",
+    author = "Jay Deiman",
     version,
-    about="Check spelling",
-    long_about="Check the spelling of a word on the command line or check \
+    about = "Check spelling",
+    long_about = "Check the spelling of a word on the command line or check \
         the spelling of the words in a file or files"
 )]
 struct Args {
     /// The argument(s) here are file(s) instead of a word
-    #[arg(short, long, default_value_t=false)]
+    #[arg(short, long, default_value_t = false)]
     file: bool,
     /// A comma-separated list of words to ignore. Only relevant with --file
     #[arg(short, long)]
     ignore: Option<String>,
     /// Ignore list file, this will be added to anything specified with
     /// the --ignore option.  The file should be 1 item (word) per line
-    #[arg(short='I', long, default_value="~/.spel_ignore")]
+    #[arg(short = 'I', long, default_value = "~/.spel_ignore")]
     ignore_file: PathBuf,
     /// When incorrect in a single word check, show the top N possible
     /// correct spellings
-    #[arg(short, long, default_value="5")]
+    #[arg(short, long, default_value = "5")]
     top: usize,
     /// Use an alternate dictionary file.  This should be 1 word per line and
     /// in a utf-8 character set.
     #[arg(short, long)]
     dict: Option<PathBuf>,
     /// Turn on debug output
-    #[arg(short='D', long)]
+    #[arg(short = 'D', long)]
     debug: bool,
     /// A single word or file or a number of files
     #[arg()]
@@ -97,8 +95,7 @@ fn main() {
     let mut alt_fbytes = vec![];
     if let Some(path) = args.dict {
         // Use an alternate dict file
-        alt_fbytes = read_bytes(&path)
-            .expect("Error reading specified dict file");
+        alt_fbytes = read_bytes(&path).expect("Error reading specified dict file");
     }
 
     let words;
@@ -115,15 +112,11 @@ fn main() {
     if args.file {
         // Convert the word list to hashset for fast lookups
         let wset = to_hashset(words);
-        let ign_list = to_hashset(
-            get_ignore_list(&args.ignore, &args.ignore_file)
-        );
-        let files: Vec<PathBuf> = args.word.iter().map(
-            |f| PathBuf::from(f)
-        ).collect();
+        let ign_list = to_hashset(get_ignore_list(&args.ignore, &args.ignore_file));
+        let files: Vec<PathBuf> = args.word.iter().map(|f| PathBuf::from(f)).collect();
 
         check_files(&files, &wset, &ign_list);
     } else {
         spell_check_words(&args.word, words, args.top, args.debug);
-    }   
+    }
 }

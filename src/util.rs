@@ -1,12 +1,11 @@
-
 use anyhow::Result;
 use difflib::sequencematcher::SequenceMatcher;
 use std::{
-    env,
     collections::HashSet,
+    env,
+    fs::File,
     io::{BufRead, BufReader, Lines, Read},
     path::PathBuf,
-    fs::{File},
     vec,
 };
 
@@ -20,8 +19,7 @@ pub fn get_words(fbytes: &[u8]) -> Vec<String> {
         if c == &nl {
             ret.push(String::from_utf8_lossy(&buf).to_string());
             buf = vec![];
-        }
-        else {
+        } else {
             buf.push(*c);
         }
     }
@@ -111,7 +109,7 @@ pub fn tokenize(line: &str) -> Vec<String> {
         } else {
             // If we get here, we've found a word boundary of some sort,
             // append a copy of the word to our return set
-            if check_token(&tmp){
+            if check_token(&tmp) {
                 ret.push(strip_apost(&tmp));
             }
 
@@ -149,11 +147,7 @@ pub fn check_file(
     }
 }
 
-pub fn check_files(
-    files: &Vec<PathBuf>,
-    words: &HashSet<String>,
-    ign_list: &HashSet<String>,
-) {
+pub fn check_files(files: &Vec<PathBuf>, words: &HashSet<String>, ign_list: &HashSet<String>) {
     for fpath in files {
         let reader = match read_lines(&fpath) {
             Err(e) => {
@@ -163,7 +157,7 @@ pub fn check_files(
                     e
                 );
                 continue;
-            },
+            }
             Ok(reader) => reader,
         };
 
@@ -212,7 +206,7 @@ pub fn get_ignore_file_contents(fpath: &PathBuf) -> Vec<String> {
                 e,
             );
             return ret;
-        },
+        }
         Ok(r) => r,
     };
 
@@ -240,9 +234,7 @@ pub fn get_ignore_list(to_ign: &Option<String>, ign_file: &PathBuf) -> Vec<Strin
 
     let ign = to_ign.as_ref().unwrap();
 
-    let tmp: Vec<String> = ign.split(',').map(
-        |w| w.trim().to_string()
-    ).collect();
+    let tmp: Vec<String> = ign.split(',').map(|w| w.trim().to_string()).collect();
 
     // Filter empty values
     for item in tmp {
@@ -255,12 +247,7 @@ pub fn get_ignore_list(to_ign: &Option<String>, ign_file: &PathBuf) -> Vec<Strin
 }
 
 /// This will spell check words supplied on the command-line
-pub fn spell_check_words(
-    word_list: &Vec<String>,
-    words: Vec<String>,
-    top: usize,
-    debug: bool,
-) {
+pub fn spell_check_words(word_list: &Vec<String>, words: Vec<String>, top: usize, debug: bool) {
     let mut topn = top;
     if words.len() < top {
         // Handle the custom word list case where
@@ -303,7 +290,7 @@ pub fn read_bytes(path: &PathBuf) -> Result<Vec<u8>> {
 
 #[test]
 fn test_readlines() {
-    let fname = "english.txt";  // This should always be here
+    let fname = "english.txt"; // This should always be here
     let reader = match read_lines(&PathBuf::from(fname)) {
         Err(e) => panic!("Error opening {}: {}", fname, e),
         Ok(reader) => reader,
@@ -336,7 +323,10 @@ fn test_tokenize() {
     // Test special chars
     let test2 = "a hyphen-ated word that's life::monkey";
     let res = tokenize(test2);
-    assert_eq!(res, vec!["a", "hyphen-ated", "word", "that", "life", "monkey"]);
+    assert_eq!(
+        res,
+        vec!["a", "hyphen-ated", "word", "that", "life", "monkey"]
+    );
 
     // Test casing
     let test3 = "A Bad Deal";
@@ -407,11 +397,7 @@ fn test_to_hashset() {
     hs.insert("monkey".to_string());
     assert_eq!(to_hashset(words), hs);
 
-    let words = vec![
-        "blah".to_string(),
-        "monkey".to_string(),
-        "blah".to_string(),
-    ];
+    let words = vec!["blah".to_string(), "monkey".to_string(), "blah".to_string()];
     assert_eq!(to_hashset(words), hs);
 }
 
@@ -425,7 +411,7 @@ fn test_strip_apost() {
 #[test]
 fn test_read_bytes() {
     use std::{
-        fs::{OpenOptions, remove_file},
+        fs::{remove_file, OpenOptions},
         io::Write,
     };
 
@@ -436,11 +422,12 @@ fn test_read_bytes() {
         let mut f = OpenOptions::new()
             .write(true)
             .create(true)
-            .open(&fname).unwrap();
-        
+            .open(&fname)
+            .unwrap();
+
         f.write_all(bytes).unwrap();
     }
-    
+
     let res = read_bytes(&fname).unwrap();
     assert_eq!(res.as_slice(), bytes);
 
